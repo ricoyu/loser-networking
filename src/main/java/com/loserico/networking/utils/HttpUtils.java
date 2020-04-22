@@ -1,11 +1,14 @@
 package com.loserico.networking.utils;
 
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -36,6 +39,30 @@ import static com.loserico.networking.constants.NetworkConstant.UNKNOWN;
  */
 @Slf4j
 public final class HttpUtils {
+	
+	public static final String DEFAULT_CHARSET = "UTF-8";
+	
+	/**
+	 * URL编码, 包括Cookie的编码
+	 *
+	 * @param s
+	 * @return
+	 */
+	@SneakyThrows
+	public static String urlEncode(String s) {
+		return URLEncoder.encode(s, DEFAULT_CHARSET);
+	}
+	
+	/**
+	 * URL解码, 包括Cookie值的解码
+	 *
+	 * @param s
+	 * @return
+	 */
+	@SneakyThrows
+	public static String urlDecode(String s) {
+		return URLDecoder.decode(s, DEFAULT_CHARSET);
+	}
 	
 	/**
 	 * 获取客户端的IP
@@ -147,6 +174,89 @@ public final class HttpUtils {
 			}
 		}
 		return result;
+	}
+	
+	/**
+	 * 获取Cookie的值, 并用UTF-8编码做UrlDecode
+	 *
+	 * @param request
+	 * @param cookie
+	 * @return String
+	 */
+	public static String getCookie(HttpServletRequest request, String cookie) {
+		if (isBlank(cookie)) {
+			return null;
+		}
+		Cookie[] cookies = request.getCookies();
+		if (cookies != null) {
+			for (Cookie c : cookies) {
+				if (cookie.equalsIgnoreCase(c.getName())) {
+					String value = c.getValue();
+					if (!isBlank(value)) {
+						return urlDecode(value);
+					}
+				}
+			}
+		}
+		
+		return null;
+	}
+	
+	/**
+	 * 添加Cookie
+	 * @param name
+	 * @param value
+	 * @return CookieBuilder
+	 */
+	public static CookieBuilder addCookie(String name, String value) {
+		return new CookieBuilder(name, value);
+	}
+	
+	public static class CookieBuilder {
+		
+		private String name;
+		
+		private String value;
+		
+		private int maxAge = -1;
+		
+		private String domain;
+		
+		private String path;
+		
+		public CookieBuilder(String name, String value) {
+			this.name = name;
+			this.value = value;
+		}
+		
+		public CookieBuilder maxAge(int maxAge) {
+			this.maxAge = maxAge;
+			return this;
+		}
+		
+		public CookieBuilder domain(String domain) {
+			this.domain = domain;
+			return this;
+		}
+		
+		public CookieBuilder path(String path) {
+			this.path = path;
+			return this;
+		}
+		
+		/**
+		 * 创建Cookie对象并添加到response
+		 * @param response
+		 * @return Cookie
+		 */
+		public Cookie build(HttpServletResponse response) {
+			Cookie cookie = new Cookie(name, urlEncode(value));
+			cookie.setMaxAge(maxAge);
+			cookie.setDomain(domain);
+			cookie.setPath(path);
+			response.addCookie(cookie);
+			return cookie;
+		}
 	}
 	
 	public static void removeRootCookies(HttpServletRequest request, HttpServletResponse response, String key) {
