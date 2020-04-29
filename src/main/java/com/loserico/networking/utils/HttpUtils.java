@@ -222,7 +222,7 @@ public final class HttpUtils {
 		
 		private String domain;
 		
-		private String path;
+		private String path = "/";
 		
 		public CookieBuilder(String name, String value) {
 			this.name = name;
